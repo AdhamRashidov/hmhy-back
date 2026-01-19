@@ -77,42 +77,40 @@ export class TeacherController {
     )(req, res);
   }
 
-  @Get('google/callback')
-  @UseGuards(AuthPassportGuard('google'))
-  async googleCallback(@Req() req: Request, @Res() res: Response) {
-    const googleUser = req.user as any;
+	@Get('google/callback')
+	@UseGuards(AuthPassportGuard('google'))
+	async googleCallback(@Req() req: Request, @Res() res: Response) {
+		const googleUser = req.user as any;
 
-    try {
-      await this.teacherService.createIncompleteGoogleTeacher({
-        email: googleUser.email,
-        fullName: googleUser.fullName,
-        googleId: googleUser.googleId,
-        imageUrl: googleUser.imageUrl,
-        accessToken: googleUser.accessToken,
-        refreshToken: googleUser.refreshToken,
-      });
+		try {
+			// 1. Ustozni yaratish yoki yangilash
+			const teacher = await this.teacherService.createIncompleteGoogleTeacher({
+				email: googleUser.email,
+				fullName: googleUser.fullName,
+				googleId: googleUser.googleId,
+				imageUrl: googleUser.imageUrl,
+				accessToken: googleUser.accessToken,
+				refreshToken: googleUser.refreshToken,
+			});
 
-      const teacher = await this.teacherService.findCompleteGoogleTeacher(
-        googleUser.email,
-      );
+			// 2. JWT Token yaratish (Role bilan birga)
+			const token = this.jwtService.sign({
+				id: teacher.id,
+				email: teacher.email,
+				role: 'TEACHER' // Role bu yerda juda muhim
+			});
 
-      if (teacher?.isComplete) {
-        const token = this.jwtService.sign({
-          id: teacher.id,
-          email: teacher.email,
-        });
-        return res.redirect(
-          `${config.SWAGGER_URL}#/Teacher%20-%20Google%20OAuth/TeacherController_sendOtp`,
-        );
-      }
+			// 3. Frontend uchun URL tayyorlash
+			const frontendCallbackUrl = `http://localhost:5173/auth/callback?accessToken=${token}&role=TEACHER`;
 
-      return res.redirect(
-        `${config.SWAGGER_URL}#/Teacher%20-%20Google%20OAuth/TeacherController_sendOtp`,
-      );
-    } catch (error: any) {
-      return res.status(500).json({ message: error.message });
-    }
-  }
+			// 4. Har qanday holatda ham frontendga qaytarish 🚀
+			return res.redirect(frontendCallbackUrl);
+
+		} catch (error: any) {
+			// Xatolik bo'lsa login sahifasiga xabar bilan qaytarish
+			return res.redirect(`http://localhost:5173/teacher-login?error=${encodeURIComponent(error.message)}`);
+		}
+	}
 
   @Post('google/send-otp')
   async sendOtp(@Body() body: SendOtpDto) {
