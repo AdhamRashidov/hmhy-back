@@ -97,8 +97,11 @@ export class TeacherController {
 			const token = this.jwtService.sign({
 				id: teacher.id,
 				email: teacher.email,
-				role: 'TEACHER' // Role bu yerda juda muhim
-			});
+				role: Roles.TEACHER
+			},
+				{
+					secret: config.TOKEN.ACCESS_TOKEN_KEY
+				});
 
 			// 3. Frontend uchun URL tayyorlash
 			const frontendCallbackUrl = `http://localhost:5173/auth/callback?accessToken=${token}&role=TEACHER`;
@@ -142,6 +145,7 @@ export class TeacherController {
 				portfolioLink: true,
 				rating: true,
 				specification: true,
+				role: true,
 			},
 		});
 	}
@@ -180,6 +184,7 @@ export class TeacherController {
 				rating: true,
 				specification: true,
 				isActive: true,
+				role: true,
 			},
 		});
 	}
